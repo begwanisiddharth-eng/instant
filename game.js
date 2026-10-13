@@ -608,28 +608,58 @@ function drawBackground() {
 }
 
 function drawCrosshair() {
+  const spread = muzzleFlash > 0 ? 5 : 0;
   ctx.save();
   ctx.translate(mouse.x, mouse.y);
-  const spread = muzzleFlash > 0 ? 6 : 0;
   ctx.strokeStyle = COLORS.player;
   ctx.shadowColor = COLORS.player;
   ctx.shadowBlur = 8;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
 
-  ctx.beginPath();
-  ctx.arc(0, 0, 10 + spread, 0, Math.PI * 2);
-  ctx.stroke();
+  // Four rotating corner brackets.
+  ctx.save();
+  ctx.rotate(time * 0.8);
+  const d = 9 + spread;
+  const arm = 5;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(d, d - arm);
+    ctx.lineTo(d, d);
+    ctx.lineTo(d - arm, d);
+    ctx.stroke();
+  }
+  ctx.restore();
 
-  const gap = 4 + spread;
-  const len = 7;
+  ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(gap, 0); ctx.lineTo(gap + len, 0);
-  ctx.moveTo(-gap, 0); ctx.lineTo(-gap - len, 0);
-  ctx.moveTo(0, gap); ctx.lineTo(0, gap + len);
-  ctx.moveTo(0, -gap); ctx.lineTo(0, -gap - len);
-  ctx.stroke();
+  ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
+
+const hudPanels = Array.from(document.querySelectorAll('#hud .panel'));
+let lastScore = -1;
+let lastWave = -1;
+
+function bump(el) {
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+}
+
+const waveBannerEl = document.getElementById('waveBanner');
+const waveBannerTextEl = document.getElementById('waveBannerText');
+
+function announceWave(n) {
+  waveBannerTextEl.textContent = `WAVE ${n}`;
+  waveBannerEl.classList.add('hidden');
+  void waveBannerEl.offsetWidth;
+  waveBannerEl.classList.remove('hidden');
+}
+
+waveBannerEl.addEventListener('animationend', () => waveBannerEl.classList.add('hidden'));
 
 function updateHud() {
   const pct = Math.max(0, player.health / player.maxHealth);
@@ -642,8 +672,25 @@ function updateHud() {
   } else {
     healthFillEl.style.background = 'linear-gradient(90deg, #3fe0ff, #4dffb0)';
   }
-  scoreEl.textContent = score;
-  waveEl.textContent = wave;
+
+  if (score !== lastScore) {
+    scoreEl.textContent = score;
+    if (lastScore >= 0) bump(scoreEl);
+    lastScore = score;
+  }
+  if (wave !== lastWave) {
+    waveEl.textContent = wave;
+    if (lastWave >= 0) bump(waveEl);
+    announceWave(wave);
+    lastWave = wave;
+  }
+
+  // Fade HUD panels when the ship flies underneath them.
+  for (const panel of hudPanels) {
+    const r = panel.getBoundingClientRect();
+    const near = player.x > r.left - 30 && player.x < r.right + 30 && player.y > r.top - 30 && player.y < r.bottom + 30;
+    panel.classList.toggle('dim', near);
+  }
 }
 
 function update(dt) {
@@ -737,6 +784,7 @@ function loop(now) {
 function endGame() {
   state = 'gameover';
   hudEl.classList.add('hidden');
+  waveBannerEl.classList.add('hidden');
   finalScoreEl.textContent = score;
   finalKillsEl.textContent = killCount;
   finalTimeEl.textContent = `${Math.round(elapsedTime)}s`;
@@ -757,6 +805,8 @@ function startGame() {
   spawnInterval = 1.5;
   shakeTime = 0;
   hitFlash = 0;
+  lastScore = -1;
+  lastWave = -1;
 
   startScreenEl.classList.add('hidden');
   gameOverEl.classList.add('hidden');
