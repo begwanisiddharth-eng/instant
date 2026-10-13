@@ -16,18 +16,28 @@ const finalKillsEl = document.getElementById('finalKills');
 const finalTimeEl = document.getElementById('finalTime');
 const restartBtn = document.getElementById('restartBtn');
 
+let W = window.innerWidth;
+let H = window.innerHeight;
+let DPR = 1;
+
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildStars();
 }
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
 const keys = {};
 window.addEventListener('keydown', (e) => (keys[e.key.toLowerCase()] = true));
 window.addEventListener('keyup', (e) => (keys[e.key.toLowerCase()] = false));
 
-const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+const mouse = { x: W / 2, y: H / 2, down: false };
 canvas.addEventListener('mousemove', (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
@@ -96,8 +106,8 @@ function shake(magnitude, duration) {
 
 class Player {
   constructor() {
-    this.x = canvas.width / 2;
-    this.y = canvas.height / 2;
+    this.x = W / 2;
+    this.y = H / 2;
     this.radius = 15;
     this.speed = 4.2;
     this.health = 100;
@@ -123,8 +133,8 @@ class Player {
       }
     }
 
-    this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
-    this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+    this.x = Math.max(this.radius, Math.min(W - this.radius, this.x));
+    this.y = Math.max(this.radius, Math.min(H - this.radius, this.y));
 
     this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
 
@@ -188,7 +198,7 @@ class Bullet {
     this.prevY = this.y;
     this.x += this.vx;
     this.y += this.vy;
-    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) {
       this.dead = true;
     }
   }
@@ -211,10 +221,10 @@ class Bullet {
 class Enemy {
   constructor(tier) {
     const edge = Math.floor(Math.random() * 4);
-    if (edge === 0) { this.x = Math.random() * canvas.width; this.y = -20; }
-    else if (edge === 1) { this.x = canvas.width + 20; this.y = Math.random() * canvas.height; }
-    else if (edge === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + 20; }
-    else { this.x = -20; this.y = Math.random() * canvas.height; }
+    if (edge === 0) { this.x = Math.random() * W; this.y = -20; }
+    else if (edge === 1) { this.x = W + 20; this.y = Math.random() * H; }
+    else if (edge === 2) { this.x = Math.random() * W; this.y = H + 20; }
+    else { this.x = -20; this.y = Math.random() * H; }
 
     this.radius = 13;
     this.speed = 1.3 + Math.random() * 0.7 + tier * 0.15;
@@ -317,33 +327,94 @@ function checkBulletEnemyCollisions() {
   }
 }
 
-function drawBackground(dt) {
-  ctx.fillStyle = '#05060a';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+let stars = [];
 
-  const spacing = 60;
-  const offset = (time * 12) % spacing;
-  ctx.strokeStyle = 'rgba(63, 224, 255, 0.05)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = -spacing; x < canvas.width + spacing; x += spacing) {
-    ctx.moveTo(x + offset, 0);
-    ctx.lineTo(x + offset, canvas.height);
+function buildStars() {
+  stars = [];
+  const count = Math.round((W * H) / 2600);
+  for (let i = 0; i < count; i++) {
+    const depth = Math.random();
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      depth,
+      size: 0.4 + depth * 1.4,
+      twinkle: Math.random() * Math.PI * 2,
+      hue: Math.random() < 0.15 ? 'rgba(200, 160, 255,' : 'rgba(190, 235, 255,',
+    });
   }
-  for (let y = -spacing; y < canvas.height + spacing; y += spacing) {
-    ctx.moveTo(0, y + offset);
-    ctx.lineTo(canvas.width, y + offset);
+}
+
+function drawBackground() {
+  ctx.fillStyle = '#04050b';
+  ctx.fillRect(0, 0, W, H);
+
+  // Nebula light — two slow-drifting coloured glows.
+  const n1x = W * (0.25 + Math.sin(time * 0.05) * 0.08);
+  const n1y = H * (0.3 + Math.cos(time * 0.04) * 0.06);
+  const g1 = ctx.createRadialGradient(n1x, n1y, 0, n1x, n1y, Math.max(W, H) * 0.55);
+  g1.addColorStop(0, 'rgba(40, 120, 255, 0.16)');
+  g1.addColorStop(0.5, 'rgba(30, 60, 160, 0.06)');
+  g1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g1;
+  ctx.fillRect(0, 0, W, H);
+
+  const n2x = W * (0.78 + Math.cos(time * 0.035) * 0.07);
+  const n2y = H * (0.72 + Math.sin(time * 0.045) * 0.06);
+  const g2 = ctx.createRadialGradient(n2x, n2y, 0, n2x, n2y, Math.max(W, H) * 0.5);
+  g2.addColorStop(0, 'rgba(170, 60, 255, 0.13)');
+  g2.addColorStop(0.5, 'rgba(110, 30, 180, 0.05)');
+  g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, W, H);
+
+  // Parallax starfield, shifted opposite the player for depth.
+  const px = state === 'playing' ? (player.x - W / 2) : Math.sin(time * 0.2) * 60;
+  const py = state === 'playing' ? (player.y - H / 2) : Math.cos(time * 0.15) * 40;
+  for (const s of stars) {
+    const drift = time * (4 + s.depth * 14);
+    let x = (s.x - px * s.depth * 0.06 + drift) % W;
+    let y = (s.y - py * s.depth * 0.06) % H;
+    if (x < 0) x += W;
+    if (y < 0) y += H;
+    const a = 0.25 + s.depth * 0.55 + Math.sin(time * 2 + s.twinkle) * 0.15;
+    ctx.fillStyle = s.hue + a.toFixed(3) + ')';
+    ctx.fillRect(x, y, s.size, s.size);
+  }
+
+  // Grid: faint minor lines, brighter major lines with node dots.
+  const spacing = 48;
+  const offset = (time * 10) % spacing;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(63, 224, 255, 0.035)';
+  ctx.beginPath();
+  for (let x = -spacing + offset; x < W + spacing; x += spacing) {
+    ctx.moveTo(Math.round(x) + 0.5, 0);
+    ctx.lineTo(Math.round(x) + 0.5, H);
+  }
+  for (let y = -spacing + offset; y < H + spacing; y += spacing) {
+    ctx.moveTo(0, Math.round(y) + 0.5);
+    ctx.lineTo(W, Math.round(y) + 0.5);
   }
   ctx.stroke();
 
+  const major = spacing * 4;
+  const mOffset = (time * 10) % major;
+  ctx.fillStyle = 'rgba(63, 224, 255, 0.22)';
+  for (let x = -major + mOffset; x < W + major; x += major) {
+    for (let y = -major + mOffset; y < H + major; y += major) {
+      ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+    }
+  }
+
   const vignette = ctx.createRadialGradient(
-    canvas.width / 2, canvas.height / 2, canvas.height * 0.3,
-    canvas.width / 2, canvas.height / 2, canvas.height * 0.75
+    W / 2, H / 2, Math.min(W, H) * 0.35,
+    W / 2, H / 2, Math.max(W, H) * 0.75
   );
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.6)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.7)');
   ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, W, H);
 }
 
 function drawCrosshair() {
@@ -417,7 +488,7 @@ function update(dt) {
 }
 
 function draw(dt) {
-  drawBackground(dt);
+  drawBackground();
 
   ctx.save();
   if (shakeTime > 0) {
@@ -436,7 +507,7 @@ function draw(dt) {
 
   if (hitFlash > 0) {
     ctx.fillStyle = `rgba(255, 30, 60, ${Math.min(0.35, hitFlash)})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
   }
 
   drawCrosshair();
@@ -451,7 +522,7 @@ function loop(now) {
     draw(dt);
   } else {
     time += dt;
-    drawBackground(dt);
+    drawBackground();
     drawCrosshair();
   }
 
@@ -498,4 +569,5 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+resizeCanvas();
 requestAnimationFrame(loop);
