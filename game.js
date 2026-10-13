@@ -52,8 +52,6 @@ window.addEventListener('blur', () => {
 const COLORS = {
   player: '#3fe0ff',
   bullet: '#aef7ff',
-  enemy: '#ff3f5e',
-  enemyCore: '#ff8a3f',
 };
 
 const MAX_PARTICLES = 700;
@@ -932,6 +930,12 @@ function showStartBest() {
   bestLineEl.classList.toggle('hidden', best <= 0);
 }
 
+function formatTime(seconds) {
+  const total = Math.round(seconds);
+  if (total < 60) return `${total}s`;
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
 function endGame() {
   state = 'gameover';
   hudEl.classList.add('hidden');
@@ -943,7 +947,7 @@ function endGame() {
   newBestEl.classList.toggle('hidden', !(isBest && score > 0));
   finalScoreEl.textContent = score;
   finalKillsEl.textContent = killCount;
-  finalTimeEl.textContent = `${Math.round(elapsedTime)}s`;
+  finalTimeEl.textContent = formatTime(elapsedTime);
   gameOverEl.classList.remove('hidden');
 }
 
