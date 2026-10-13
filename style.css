@@ -546,7 +546,17 @@ body {
   }
 
   .health-panel {
-    width: 160px;
+    width: 150px;
+  }
+
+  .wide-only {
+    display: none;
+  }
+
+  #hud {
+    top: 12px;
+    left: 12px;
+    right: 12px;
   }
 
   .stat-value {

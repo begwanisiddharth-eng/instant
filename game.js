@@ -43,7 +43,11 @@ canvas.addEventListener('mousemove', (e) => {
   mouse.y = e.clientY;
 });
 canvas.addEventListener('mousedown', () => (mouse.down = true));
-canvas.addEventListener('mouseup', () => (mouse.down = false));
+window.addEventListener('mouseup', () => (mouse.down = false));
+window.addEventListener('blur', () => {
+  mouse.down = false;
+  for (const k in keys) keys[k] = false;
+});
 
 const COLORS = {
   player: '#3fe0ff',
@@ -824,9 +828,48 @@ function loop(now) {
   } else {
     time += dt;
     drawBackground();
+    updateAmbient(dt);
+    drawAmbient();
   }
 
   requestAnimationFrame(loop);
+}
+
+// Start-screen attract mode: enemy formations drift across behind the title.
+let ambient = [];
+let ambientTimer = 0;
+
+function updateAmbient(dt) {
+  ambientTimer -= dt;
+  if (ambientTimer <= 0) {
+    ambientTimer = 1.6 + Math.random() * 1.4;
+    const fromLeft = Math.random() < 0.5;
+    const y = H * (0.1 + Math.random() * 0.8);
+    const dir = fromLeft ? 1 : -1;
+    const tier = 1 + Math.floor(Math.random() * 9);
+    const count = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const e = new Enemy(tier);
+      e.x = fromLeft ? -30 - i * 34 : W + 30 + i * 34;
+      e.y = y + Math.sin(i) * 14;
+      e.vx = dir * (0.6 + Math.random() * 0.15);
+      e.wobble = Math.random() * Math.PI * 2;
+      e.age = 1;
+      ambient.push(e);
+    }
+  }
+  for (const e of ambient) {
+    e.x += e.vx * dt * 60;
+    e.y += Math.sin(time * 1.5 + e.wobble) * 0.3;
+    e.spin += dt * 1.5;
+  }
+  ambient = ambient.filter((e) => e.x > -300 && e.x < W + 300);
+}
+
+function drawAmbient() {
+  ctx.globalAlpha = 0.55;
+  ambient.forEach((e) => e.draw());
+  ctx.globalAlpha = 1;
 }
 
 const BEST_KEY = 'neon-strike-best';
@@ -889,6 +932,9 @@ function startGame() {
   hitFlash = 0;
   lastScore = -1;
   lastWave = -1;
+
+  mouse.down = false;
+  ambient = [];
 
   startScreenEl.classList.add('hidden');
   gameOverEl.classList.add('hidden');
