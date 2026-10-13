@@ -56,6 +56,8 @@ const COLORS = {
   enemyCore: '#ff8a3f',
 };
 
+const MAX_PARTICLES = 700;
+
 let state = 'start';
 let shakeTime = 0;
 let shakeMag = 0;
@@ -365,6 +367,37 @@ const ENEMY_PALETTES = [
   { edge: '#ffa63f', core: '#fff06a', fill: '#1d1206' },
 ];
 
+// Pre-rendered radial glow sprites, cached per colour, so enemies need no shadowBlur.
+const glowCache = new Map();
+
+function glowSprite(color, radius) {
+  const key = color + radius;
+  let c = glowCache.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = radius * 2;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(radius, radius, 0, radius, radius, radius);
+    grad.addColorStop(0, color + '55');
+    grad.addColorStop(0.4, color + '22');
+    grad.addColorStop(1, color + '00');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, radius * 2, radius * 2);
+    glowCache.set(key, c);
+  }
+  return c;
+}
+
+function polygonPath(sides, r) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = ((Math.PI * 2) / sides) * i;
+    if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
 class Enemy {
   constructor(tier) {
     const edge = Math.floor(Math.random() * 4);
@@ -406,57 +439,39 @@ class Enemy {
     const spawn = Math.min(1, this.age / 0.25);
     const scale = pulse * (0.4 + 0.6 * spawn) * (this.flash > 0 ? 1.15 : 1);
     const r = this.radius;
+    const edge = this.flash > 0 ? '#ffffff' : p.edge;
     ctx.save();
     ctx.translate(this.x, this.y);
 
-    // Ambient glow.
-    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.6);
-    glow.addColorStop(0, p.edge + '40');
-    glow.addColorStop(1, p.edge + '00');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
-    ctx.fill();
+    const glow = glowSprite(p.edge, 34);
+    ctx.drawImage(glow, -34, -34);
 
     ctx.rotate(this.spin);
     ctx.scale(scale, scale);
-
-    ctx.shadowColor = p.edge;
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = this.flash > 0 ? '#ffffff' : p.fill;
-    ctx.strokeStyle = this.flash > 0 ? '#ffffff' : p.edge;
-    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
-    ctx.beginPath();
-    for (let i = 0; i < this.sides; i++) {
-      const a = ((Math.PI * 2) / this.sides) * i;
-      const px = Math.cos(a) * r;
-      const py = Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+
+    // Halo stroke + crisp stroke stands in for an expensive shadowBlur.
+    polygonPath(this.sides, r);
+    ctx.fillStyle = this.flash > 0 ? '#ffffff' : p.fill;
     ctx.fill();
+    ctx.strokeStyle = p.edge + '55';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     // Inner counter-rotating frame.
     ctx.rotate(-this.spin * 2);
-    ctx.shadowBlur = 0;
+    polygonPath(this.sides, r * 0.55);
     ctx.strokeStyle = p.edge + '99';
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 0; i < this.sides; i++) {
-      const a = ((Math.PI * 2) / this.sides) * i;
-      const px = Math.cos(a) * r * 0.55;
-      const py = Math.sin(a) * r * 0.55;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
     ctx.stroke();
 
-    ctx.shadowColor = p.core;
-    ctx.shadowBlur = 10;
+    ctx.fillStyle = p.core + '55';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = p.core;
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
@@ -710,6 +725,7 @@ function update(dt) {
   bullets = bullets.filter((b) => !b.dead);
   enemies = enemies.filter((e) => !e.dead);
   particles = particles.filter((p) => p.life > 0);
+  if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
   effects = effects.filter((f) => f.life > 0);
 
   spawnTimer += dt;
