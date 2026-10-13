@@ -64,6 +64,7 @@
       </div>
       <button id="startBtn" class="btn">Start Mission <span class="btn-arrow">&rarr;</span></button>
       <div class="hint">or press <span class="key key-sm">Enter</span></div>
+      <div id="bestLine" class="best-line hidden">Personal best <span id="bestScore">0</span></div>
     </div>
   </div>
 
@@ -71,11 +72,13 @@
     <div class="overlay-card danger">
       <div class="eyebrow">Signal lost</div>
       <h1 class="title title-sm">MISSION FAILED</h1>
+      <div id="newBest" class="badge hidden">&#9733; New personal best</div>
       <div class="results">
         <div class="result"><span id="finalScore" class="result-value">0</span><span class="result-label">Score</span></div>
         <div class="result"><span id="finalKills" class="result-value">0</span><span class="result-label">Kills</span></div>
         <div class="result"><span id="finalTime" class="result-value">0s</span><span class="result-label">Survived</span></div>
       </div>
+      <div class="best-row">Personal best <span id="finalBest">0</span></div>
       <button id="restartBtn" class="btn">Redeploy <span class="btn-arrow">&#8635;</span></button>
       <div class="hint">or press <span class="key key-sm">Enter</span></div>
     </div>

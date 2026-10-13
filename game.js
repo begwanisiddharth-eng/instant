@@ -722,12 +722,51 @@ function update(dt) {
   updateHud();
 
   if (player.health <= 0) {
-    endGame();
+    killPlayer();
   }
 }
 
+let dyingTime = 0;
+
+function killPlayer() {
+  state = 'dying';
+  dyingTime = 0;
+  const { x, y } = player;
+  burst(x, y, COLORS.player, 40, 9, 0.9, 3, true);
+  burst(x, y, '#ffffff', 20, 4, 0.7, 3);
+  burst(x, y, '#8a7dff', 24, 6, 1.1, 2.5);
+  effects.push(new Ring(x, y, COLORS.player, 220, 0.9, 5));
+  effects.push(new Ring(x, y, '#ffffff', 110, 0.5, 3));
+  effects.push(new Ring(x, y, '#8a7dff', 340, 1.3, 2));
+  shake(16, 0.5);
+  hitFlash = 0.4;
+  hudEl.classList.add('hidden');
+  waveBannerEl.classList.add('hidden');
+}
+
+// Debris and stragglers keep moving behind the menus.
+function updateAftermath(dt) {
+  time += dt;
+  for (const e of enemies) {
+    const a = Math.atan2(e.y - player.y, e.x - player.x);
+    e.x += Math.cos(a) * 1.2;
+    e.y += Math.sin(a) * 1.2;
+    e.spin += dt * 2;
+    e.flash = Math.max(0, e.flash - dt);
+  }
+  bullets.forEach((b) => b.update());
+  particles.forEach((p) => p.update(dt));
+  effects.forEach((f) => f.update(dt));
+  bullets = bullets.filter((b) => !b.dead);
+  particles = particles.filter((p) => p.life > 0);
+  effects = effects.filter((f) => f.life > 0);
+  enemies = enemies.filter((e) => e.x > -60 && e.x < W + 60 && e.y > -60 && e.y < H + 60);
+  if (shakeTime > 0) shakeTime -= dt;
+  if (hitFlash > 0) hitFlash -= dt;
+}
+
 function drawDamageVignette() {
-  const low = player.health / player.maxHealth < 0.3 ? 0.18 + Math.sin(time * 6) * 0.08 : 0;
+  const low = state === 'playing' && player.health / player.maxHealth < 0.3 ? 0.18 + Math.sin(time * 6) * 0.08 : 0;
   const a = Math.max(Math.min(0.55, hitFlash * 2), low);
   if (a <= 0) return;
   const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.72);
@@ -756,13 +795,13 @@ function draw(dt) {
   effects.forEach((f) => f.draw());
   ctx.globalCompositeOperation = 'source-over';
 
-  player.draw();
+  if (state === 'playing') player.draw();
 
   ctx.restore();
 
   drawDamageVignette();
 
-  drawCrosshair();
+  if (state === 'playing') drawCrosshair();
 }
 
 function loop(now) {
@@ -772,19 +811,62 @@ function loop(now) {
   if (state === 'playing') {
     update(dt);
     draw(dt);
+  } else if (state === 'dying') {
+    // Slow motion that eases back to full speed.
+    dyingTime += dt;
+    const scale = 0.25 + Math.min(1, dyingTime / 1.4) * 0.75;
+    updateAftermath(dt * scale);
+    draw(dt);
+    if (dyingTime > 1.2) endGame();
+  } else if (state === 'gameover') {
+    updateAftermath(dt);
+    draw(dt);
   } else {
     time += dt;
     drawBackground();
-    drawCrosshair();
   }
 
   requestAnimationFrame(loop);
+}
+
+const BEST_KEY = 'neon-strike-best';
+
+function loadBest() {
+  try {
+    return parseInt(localStorage.getItem(BEST_KEY), 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveBest(value) {
+  try {
+    localStorage.setItem(BEST_KEY, String(value));
+  } catch {
+    // Storage unavailable; best score just won't persist.
+  }
+}
+
+const bestLineEl = document.getElementById('bestLine');
+const bestScoreEl = document.getElementById('bestScore');
+const finalBestEl = document.getElementById('finalBest');
+const newBestEl = document.getElementById('newBest');
+
+function showStartBest() {
+  const best = loadBest();
+  bestScoreEl.textContent = best;
+  bestLineEl.classList.toggle('hidden', best <= 0);
 }
 
 function endGame() {
   state = 'gameover';
   hudEl.classList.add('hidden');
   waveBannerEl.classList.add('hidden');
+  const prevBest = loadBest();
+  const isBest = score > prevBest;
+  if (isBest) saveBest(score);
+  finalBestEl.textContent = Math.max(score, prevBest);
+  newBestEl.classList.toggle('hidden', !(isBest && score > 0));
   finalScoreEl.textContent = score;
   finalKillsEl.textContent = killCount;
   finalTimeEl.textContent = `${Math.round(elapsedTime)}s`;
@@ -819,11 +901,12 @@ function startGame() {
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 window.addEventListener('keydown', (e) => {
-  if ((e.key === 'Enter' || e.key === ' ') && state !== 'playing') {
+  if ((e.key === 'Enter' || e.key === ' ') && (state === 'start' || state === 'gameover')) {
     e.preventDefault();
     startGame();
   }
 });
 
 resizeCanvas();
+showStartBest();
 requestAnimationFrame(loop);
