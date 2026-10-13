@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NEON STRIKE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#04050b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2304050b'/%3E%3Cpath d='M27 16 9 25l4-9-4-9z' fill='none' stroke='%233fe0ff' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -10,47 +16,85 @@
 
   <div id="hud" class="hidden">
     <div class="panel health-panel">
-      <div class="panel-label">Integrity</div>
+      <div class="panel-head">
+        <span class="panel-label">Hull<span class="wide-only"> Integrity</span></span>
+        <span id="healthValue" class="bar-value">100</span>
+      </div>
       <div class="bar">
         <div id="healthFill" class="bar-fill"></div>
       </div>
-      <div id="healthValue" class="bar-value">100</div>
     </div>
 
-    <div class="panel stat-panel">
-      <div class="stat">
-        <div class="stat-label">Score</div>
-        <div id="score" class="stat-value">0</div>
+    <div class="hud-right">
+      <div class="panel stat-panel">
+        <div class="stat">
+          <div class="stat-label">Score</div>
+          <div id="score" class="stat-value">0</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <div class="stat-label">Wave</div>
+          <div id="wave" class="stat-value">1</div>
+        </div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Wave</div>
-        <div id="wave" class="stat-value">1</div>
-      </div>
+      <div id="chain" class="chain">x2 Chain</div>
     </div>
+  </div>
+
+  <div id="waveBanner" class="wave-banner hidden">
+    <div class="wave-banner-line"></div>
+    <div class="wave-banner-label">Incoming</div>
+    <div id="waveBannerText" class="wave-banner-text">WAVE 1</div>
+    <div class="wave-banner-line"></div>
   </div>
 
   <div id="startScreen" class="overlay">
     <div class="overlay-card">
-      <h1 class="title">NEON STRIKE</h1>
-      <p class="subtitle">Survive the swarm</p>
+      <div class="eyebrow">Sector 7 &middot; Hostiles inbound</div>
+      <h1 class="title"><span class="title-a">NEON</span><span class="title-b">STRIKE</span></h1>
+      <p class="subtitle">Hold the line. Survive the swarm.</p>
       <div class="controls">
-        <div class="control-row"><span class="key">W A S D</span><span>Move</span></div>
-        <div class="control-row"><span class="key">Mouse</span><span>Aim</span></div>
-        <div class="control-row"><span class="key">Click</span><span>Fire</span></div>
+        <div class="control">
+          <div class="keys"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></div>
+          <span class="control-label">Move</span>
+        </div>
+        <div class="control">
+          <div class="keys"><span class="key key-wide">Mouse</span></div>
+          <span class="control-label">Aim</span>
+        </div>
+        <div class="control">
+          <div class="keys"><span class="key key-wide">Hold Click</span></div>
+          <span class="control-label">Fire</span>
+        </div>
       </div>
-      <button id="startBtn" class="btn">Start Mission</button>
+      <button id="startBtn" class="btn">Start Mission <span class="btn-arrow">&rarr;</span></button>
+      <div class="hint">or press <span class="key key-sm">Enter</span></div>
+      <div id="bestLine" class="best-line hidden">Personal best <span id="bestScore">0</span></div>
+    </div>
+  </div>
+
+  <div id="pauseScreen" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="eyebrow">Systems on standby</div>
+      <h1 class="title title-sm">PAUSED</h1>
+      <button id="resumeBtn" class="btn">Resume <span class="btn-arrow">&rarr;</span></button>
+      <div class="hint">or press <span class="key key-sm">Esc</span></div>
     </div>
   </div>
 
   <div id="gameOver" class="overlay hidden">
     <div class="overlay-card danger">
-      <h1 class="title">MISSION FAILED</h1>
+      <div class="eyebrow">Signal lost</div>
+      <h1 class="title title-sm">MISSION FAILED</h1>
+      <div id="newBest" class="badge hidden">&#9733; New personal best</div>
       <div class="results">
-        <div class="result-row"><span>Score</span><span id="finalScore">0</span></div>
-        <div class="result-row"><span>Kills</span><span id="finalKills">0</span></div>
-        <div class="result-row"><span>Time Survived</span><span id="finalTime">0s</span></div>
+        <div class="result"><span id="finalScore" class="result-value">0</span><span class="result-label">Score</span></div>
+        <div class="result"><span id="finalKills" class="result-value">0</span><span class="result-label">Kills</span></div>
+        <div class="result"><span id="finalTime" class="result-value">0s</span><span class="result-label">Survived</span></div>
       </div>
-      <button id="restartBtn" class="btn">Try Again</button>
+      <div class="best-row">Personal best <span id="finalBest">0</span></div>
+      <button id="restartBtn" class="btn">Redeploy <span class="btn-arrow">&#8635;</span></button>
+      <div class="hint">or press <span class="key key-sm">Enter</span></div>
     </div>
   </div>
 
