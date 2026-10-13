@@ -184,7 +184,10 @@ function spray(x, y, angle, spread, color, count, speed, life, size) {
   }
 }
 
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 function shake(magnitude, duration) {
+  if (reduceMotion) magnitude *= 0.3;
   shakeMag = Math.max(shakeMag, magnitude);
   shakeTime = Math.max(shakeTime, duration);
 }
@@ -497,6 +500,8 @@ let bullets = [];
 let enemies = [];
 let particles = [];
 let effects = [];
+let chainCount = 0;
+let chainTimer = 0;
 let score = 0;
 let wave = 1;
 let spawnTimer = 0;
@@ -521,6 +526,8 @@ function checkBulletEnemyCollisions() {
           enemy.dead = true;
           score += 10;
           killCount += 1;
+          chainCount = chainTimer > 0 ? chainCount + 1 : 1;
+          chainTimer = 1.5;
           burst(enemy.x, enemy.y, enemy.palette.edge, 16, 5, 0.5, 2.5, true);
           burst(enemy.x, enemy.y, enemy.palette.core, 10, 2.5, 0.6, 3);
           effects.push(new Ring(enemy.x, enemy.y, enemy.palette.edge, 46, 0.4, 3));
@@ -658,6 +665,7 @@ function drawCrosshair() {
   ctx.restore();
 }
 
+const chainEl = document.getElementById('chain');
 const hudPanels = Array.from(document.querySelectorAll('#hud .panel'));
 let lastScore = -1;
 let lastWave = -1;
@@ -704,6 +712,10 @@ function updateHud() {
     lastWave = wave;
   }
 
+  const chainActive = chainTimer > 0 && chainCount >= 2;
+  if (chainActive) chainEl.textContent = `x${chainCount} Chain`;
+  chainEl.classList.toggle('show', chainActive);
+
   // Fade HUD panels when the ship flies underneath them.
   for (const panel of hudPanels) {
     const r = panel.getBoundingClientRect();
@@ -738,6 +750,7 @@ function update(dt) {
   if (shakeTime > 0) shakeTime -= dt;
   if (hitFlash > 0) hitFlash -= dt;
   if (muzzleFlash > 0) muzzleFlash -= dt;
+  if (chainTimer > 0) chainTimer -= dt;
 
   updateHud();
 
@@ -815,7 +828,7 @@ function draw(dt) {
   effects.forEach((f) => f.draw());
   ctx.globalCompositeOperation = 'source-over';
 
-  if (state === 'playing') player.draw();
+  if (state === 'playing' || state === 'paused') player.draw();
 
   ctx.restore();
 
@@ -838,6 +851,8 @@ function loop(now) {
     updateAftermath(dt * scale);
     draw(dt);
     if (dyingTime > 1.2) endGame();
+  } else if (state === 'paused') {
+    draw(0);
   } else if (state === 'gameover') {
     updateAftermath(dt);
     draw(dt);
@@ -948,6 +963,8 @@ function startGame() {
   hitFlash = 0;
   lastScore = -1;
   lastWave = -1;
+  chainCount = 0;
+  chainTimer = 0;
 
   mouse.down = false;
   ambient = [];
@@ -959,6 +976,34 @@ function startGame() {
   state = 'playing';
   lastTime = performance.now();
 }
+
+const pauseScreenEl = document.getElementById('pauseScreen');
+const resumeBtn = document.getElementById('resumeBtn');
+
+function pauseGame() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  mouse.down = false;
+  shakeTime = 0;
+  waveBannerEl.classList.add('hidden');
+  pauseScreenEl.classList.remove('hidden');
+}
+
+function resumeGame() {
+  if (state !== 'paused') return;
+  pauseScreenEl.classList.add('hidden');
+  state = 'playing';
+}
+
+resumeBtn.addEventListener('click', resumeGame);
+window.addEventListener('blur', pauseGame);
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'escape' || k === 'p') {
+    if (state === 'playing') pauseGame();
+    else if (state === 'paused') resumeGame();
+  }
+});
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
