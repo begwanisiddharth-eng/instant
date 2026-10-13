@@ -491,5 +491,11 @@ function startGame() {
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+window.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && state !== 'playing') {
+    e.preventDefault();
+    startGame();
+  }
+});
 
 requestAnimationFrame(loop);
