@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NEON STRIKE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="panel health-panel">
+      <div class="panel-label">Integrity</div>
+      <div class="bar">
+        <div id="healthFill" class="bar-fill"></div>
+      </div>
+      <div id="healthValue" class="bar-value">100</div>
+    </div>
+
+    <div class="panel stat-panel">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div id="score" class="stat-value">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Wave</div>
+        <div id="wave" class="stat-value">1</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <div class="overlay-card">
+      <h1 class="title">NEON STRIKE</h1>
+      <p class="subtitle">Survive the swarm</p>
+      <div class="controls">
+        <div class="control-row"><span class="key">W A S D</span><span>Move</span></div>
+        <div class="control-row"><span class="key">Mouse</span><span>Aim</span></div>
+        <div class="control-row"><span class="key">Click</span><span>Fire</span></div>
+      </div>
+      <button id="startBtn" class="btn">Start Mission</button>
+    </div>
+  </div>
+
+  <div id="gameOver" class="overlay hidden">
+    <div class="overlay-card danger">
+      <h1 class="title">MISSION FAILED</h1>
+      <div class="results">
+        <div class="result-row"><span>Score</span><span id="finalScore">0</span></div>
+        <div class="result-row"><span>Kills</span><span id="finalKills">0</span></div>
+        <div class="result-row"><span>Time Survived</span><span id="finalTime">0s</span></div>
+      </div>
+      <button id="restartBtn" class="btn">Try Again</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
